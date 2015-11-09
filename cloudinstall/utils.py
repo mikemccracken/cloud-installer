@@ -387,7 +387,7 @@ def get_command_output(command, timeout=None, user_sudo=False):
 
 
 def poll_until_true(cmd, predicate, frequency, timeout=600,
-                    ignore_exceptions=False):
+                    ignore_exceptions=False, user_sudo=False):
     """run get_command_output(cmd) every frequency seconds, until
     predicate(output) returns True. Timeout after timeout seconds.
 
@@ -406,7 +406,7 @@ def poll_until_true(cmd, predicate, frequency, timeout=600,
         if time.time() - frequency_stub <= frequency:
             continue
         try:
-            output = get_command_output(cmd)
+            output = get_command_output(cmd, user_sudo=user_sudo)
         except Exception as e:
             if not ignore_exceptions:
                 raise e

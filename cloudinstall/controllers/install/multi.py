@@ -132,16 +132,23 @@ class MultiInstall:
 
         # workaround to avoid connection failure at beginning of
         # openstack-status
-        out = utils.get_command_output(
-            "{0} juju status".format(
-                self.config.juju_home()),
-            timeout=None,
-            user_sudo=True)
-        if out['status'] != 0:
-            log.debug("failure to get initial juju status: '{}'".format(out))
-            raise Exception("Problem with juju status poke.")
+        utils.poll_until_true("{} juju status".format(self.config.juju_home()),
+                              lambda out: out['status'] != 0, 5,
+                              user_sudo=True)
 
-        self.add_bootstrap_to_no_proxy()
+        n_tries = 0
+        while True:
+            try:
+                log.debug("adding bootstrap to noproxy")
+                self.add_bootstrap_to_no_proxy()
+            except:
+                if n_tries > 30:
+                    raise
+                n_tries += 1
+                log.debug("Sleeping 2 sec waiting for bootstrap node IP")
+                time.sleep(2)
+            else:
+                break
 
         self.tasker.stop_current_task()
 
