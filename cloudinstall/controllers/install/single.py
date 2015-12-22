@@ -198,10 +198,13 @@ class SingleInstall:
                                self.read_container_status)
         self.cdriver.create(self.container_name, self.userdata)
 
-        mounts = [(self.config.cfg_path, 'home/ubuntu/.cloud-install', "dir")]
+        mounts = []
         topcontainer_type = self.config.getopt("topcontainer_type")
         if topcontainer_type == 'lxc':
-            mounts += [("/var/cache/lxc", "var/cache/lxc", "dir")]
+            mounts += [(self.config.cfg_path,
+                        'home/ubuntu/.cloud-install',
+                        "dir"),
+                       ("/var/cache/lxc", "var/cache/lxc", "dir")]
         elif topcontainer_type == 'lxd':
             mounts += [("/dev/kvm", "dev/kvm", "file"),
                        ("/dev/net", "dev/net", "dir")]
@@ -268,7 +271,23 @@ class SingleInstall:
                          "-o Dpkg::Options::=--force-confold "
                          "install openstack openstack-single ",
                          output_cb=self.set_progress_output)
+
+        topcontainer_type = self.config.getopt("topcontainer_type")
+        if topcontainer_type == 'lxd':
+            self.copy_config_dir()
+
         log.debug("done installing deps")
+
+    def copy_config_dir(self):
+        homedir, cfgdir = os.path.split(self.config.cfg_path)
+        tarball_path = '/tmp/openstack-config.tar'
+        call("tar -cf {} -C {} {}".format(tarball_path, homedir, cfgdir),
+             shell=True)
+        self.cdriver.cp(self.container_name, tarball_path, '/tmp/')
+        self.cdriver.run(self.container_name,
+                         'tar xf /tmp/openstack-config.tar '
+                         '-C /home/ubuntu/')
+        os.unlink(tarball_path)
 
     def read_container_status(self):
         return self.cdriver.get_status(self.container_name)
